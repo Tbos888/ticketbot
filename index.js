@@ -1,5 +1,17 @@
 require('dotenv').config();
 
+const express = require('express');
+const app = express();
+const port = process.env.PORT || 3000;
+
+app.get('/', (req, res) => {
+  res.send('Bot is online!');
+});
+
+app.listen(port, () => {
+  console.log(`Web Server is running on port ${port}`);
+});
+
 const {
     Client,
     GatewayIntentBits,
