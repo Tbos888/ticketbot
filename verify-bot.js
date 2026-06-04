@@ -10,6 +10,22 @@ const {
     Routes
 } = require('discord.js');
 
+// ========================================================
+// 🌐 เพิ่มระบบจำลอง Web Server ขนาดเล็ก เพื่อรองรับพอร์ตของ Render.com
+// ========================================================
+const express = require('express');
+const app = express();
+const PORT = process.env.PORT || 10000; // ใช้พอร์ตจาก Render หรือเลือกพอร์ต 10000 เป็นค่าเริ่มต้น
+
+app.get('/', (req, res) => {
+    res.send('FLEXDAS VERIFY BOT IS ONLINE!');
+});
+
+app.listen(PORT, () => {
+    console.log(`Web Server is running on port ${PORT}`);
+});
+// ========================================================
+
 // สร้าง Client แยกเฉพาะของบอทตัวที่ 2
 const client = new Client({
     intents: [
@@ -33,7 +49,7 @@ const BANNER_IMAGE_URL = "https://cdn.discordapp.com/attachments/151047592659124
 
 client.on('ready', async () => {
     console.log(`=========================================`);
-    console.log(` VERIFY BOT : ${client.user.tag} ONLINE`);
+    console.log(` PREMIUM BOT (JS) : ${client.user.tag} ONLINE`);
     console.log(`=========================================`);
 
     const commands = [
