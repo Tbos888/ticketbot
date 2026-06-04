@@ -7,10 +7,12 @@ const {
     ButtonStyle, 
     Partials,
     REST,
-    Routes
+    Routes,
+    PermissionFlagsBits,
+    ChannelType
 } = require('discord.js');
 
-// สร้าง Client บอท พร้อมตั้งค่าสิทธิ์ (Intents)
+// สร้าง Client ของบอทหลัก (บอทระบบตั๋ว FlexDas)
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -22,175 +24,221 @@ const client = new Client({
 });
 
 // ========================================================
-// ⚙️ ตั้งค่าความปลอดภัยและไอดีระบบ (อิงตามข้อมูลจริงของคุณ)
+// ⚙️ ตั้งค่าความปลอดภัยและไอดีระบบของบอทตั๋วหลัก
 // ========================================================
-const TOKEN = process.env.VERIFY_BOT_TOKEN;
-const ROLE_ID = "1506712792722440203";         // ID ยศ Member ของคุณ
-const LOG_CHANNEL_ID = "1510475926591242390";  // ID ห้อง Log แอดมินของคุณ
-const MIN_ACCOUNT_AGE_DAYS = 7;               // ตรวจจับไอดีสแปม (ต่ำกว่า 7 วันบล็อกทันที)
-const BANNER_IMAGE_URL = "https://cdn.discordapp.com/attachments/1510475926591242390/1510490934465265857/ChatGPT_Image_May_30_2026_07_32_07_AM.png?ex=6a219f0e&is=6a204d8e&hm=8467f71de43508f0aa4cd7b42566c2c06d6f67eb7422859541e8783b8c8b4e94&";
+const TOKEN = process.env.TOKEN;                 // ดึง Token บอทตั๋วหลักจากระบบหลังบ้าน Render (ช่อง TOKEN)
+const CATEGORY_ID = "ใส่_ID_หมวดหมู่ตั๋วตรงนี้";    // (ไม่ใส่ก็ได้) ID หมวดหมู่ (Category) ที่อยากให้ห้องตั๋วไปสร้างอยู่ข้างใน
+const STAFF_ROLE_ID = "ใส่_ID_ยศแอดมินหรือทีมงาน";   // (ไม่ใส่ก็ได้) ID ยศของทีมงานที่จะให้มองเห็นและร่วมแชทในช่องตั๋วได้
 // ========================================================
 
-// เมื่อบอทออนไลน์สำเร็จ
 client.on('ready', async () => {
     console.log(`=========================================`);
-    console.log(` PREMIUM BOT (JS) : ${client.user.tag} ONLINE`);
+    console.log(` TICKET BOT (JS) : ${client.user.tag} ONLINE`);
     console.log(`=========================================`);
 
-    // ลงทะเบียน Slash Command กับทาง Discord API
+    // ลงทะเบียนสแลชคำสั่ง /panel เข้าสู่ดิสคอร์ด
     const commands = [
         {
-            name: 'setup_verify',
-            description: 'สร้างหน้าจอยืนยันตัวตนสไตล์พรีเมียม มินิมอล'
+            name: 'panel',
+            description: 'สร้างแผงควบคุมตั๋วบริการหลักสไตล์พรีเมียม (FlexDas Panel)'
         }
     ];
 
     const rest = new REST({ version: '10' }).setToken(TOKEN);
 
     try {
-        console.log('กำลังรีเฟรชสแลชคำสั่ง...');
         await rest.put(
             Routes.applicationCommands(client.user.id),
             { body: commands }
         );
-        console.log('ซิงก์ระบบคำสั่งเรียบร้อยแล้ว!');
+        console.log('ซิงก์ระบบคำสั่งบอทตั๋วสำเร็จ!');
     } catch (error) {
-        console.error('เกิดข้อผิดพลาดในการซิงก์คำสั่ง:', error);
+        console.error('Error syncing ticket commands:', error);
     }
 });
 
-// ตรวจจับการกดคำสั่งและกดปุ่มในเซิร์ฟเวอร์
 client.on('interactionCreate', async (interaction) => {
     
-    // 1. ตรวจจับ Slash Command: /setup_verify
+    // 1. ตรวจจับคำสั่ง Slash Command: /panel เพื่อส่งแผงควบคุมหลัก
     if (interaction.isChatInputCommand()) {
-        if (interaction.commandName === 'setup_verify') {
-            
-            // ตรวจสอบว่าผู้พิมพ์เป็น Administrator หรือไม่
-            if (!interaction.member.permissions.has('Administrator')) {
+        if (interaction.commandName === 'panel') {
+            // เช็คว่าผู้ใช้คำสั่งเป็นผู้ดูแลระบบหรือไม่
+            if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
                 return interaction.reply({ content: "❌ คุณไม่มีสิทธิ์ใช้งานคำสั่งนี้", ephemeral: true });
             }
 
-            // ยืดเวลาการตอบกลับเพื่อป้องกัน Timeout / Unknown Interaction
             await interaction.deferReply({ ephemeral: true });
 
             const embed = new EmbedBuilder()
-                .setTitle("SECURITY VERIFICATION")
+                .setTitle("FLEXDAS INTERACTIVE PANEL")
                 .setDescription(
-                    "**WELCOME TO THE SERVER**\n" +
-                    "Please complete the verification process to gain full access to the server. " +
-                    "This protocol is designed to protect our community from automated spam and security threats.\n\n" +
-                    "**GUIDELINES**\n" +
-                    "• Click the verification button below to initiate.\n" +
-                    "• Brand new or unestablished accounts may be restricted.\n" +
-                    "• If you encounter issues, please contact Tbos."
+                    "**🤍 Welcome to FlexDas Terminal**\n\n" +
+                    "ยินดีต้อนรับเข้าสู่แผงควบคุมหลักบริการของ **FlexDas**\n" +
+                    "โปรดทำรายการผ่านแบบฟอร์มปุ่มกดด้านล่างนี้ได้ทันทีครับ\n\n" +
+                    "⚙️ **แผนกบริการหลัก**\n" +
+                    "🛒 **สั่งทำบริการและจัดซื้อไอดี (Buy Service)**\n" +
+                    "แฟ้มสั่งทำเว็บไซต์ ระบบฐานข้อมูล และเลือกซื้อไอดีเกมต่าง ๆ\n\n" +
+                    "💰 **เสนอขายสินค้ากับแบรนด์ (Sell to Us)**\n" +
+                    "ส่งข้อมูลประวัติและเงื่อนไขไอดีเกมที่ต้องการขายให้กับทางเรา\n\n" +
+                    "🛠️ **แจ้งปัญหา / คำขอพิเศษ (Help Center)**\n" +
+                    "แผนกรับเรื่องบั๊ก เคลมประกัน หรือพูดคุยโดยตรงกับฝ่ายเทคนิค\n\n" +
+                    "───────────────────────────────────"
                 )
                 .setColor(0x2b2d31)
-                .setFooter({ text: "FLEXDAS SECURITY SYSTEM" });
+                .setFooter({ text: "Monochrome Interactive System • FlexDas • 02/06/2026 22:41" });
 
-            if (BANNER_IMAGE_URL) {
-                embed.setImage(BANNER_IMAGE_URL);
-            }
+            // สร้างปุ่มกดทั้ง 3 ปุ่มตรงตามต้นฉบับเก่าของคุณ
+            const btnBuy = new ButtonBuilder()
+                .setCustomId('ticket_buy')
+                .setLabel('🛒 สั่งบริการ/ซื้อ ID')
+                .setStyle(ButtonStyle.Secondary);
 
-            // สร้างปุ่มกดยืนยันตัวตน
-            const button = new ButtonBuilder()
-                .setCustomId('premium_verify_btn_final')
-                .setLabel('ยืนยันตัวตน (Verify)')
-                .setStyle(ButtonStyle.Success);
+            const btnSell = new ButtonBuilder()
+                .setCustomId('ticket_sell')
+                .setLabel('💰 เสนอขายไอดี')
+                .setStyle(ButtonStyle.Secondary);
 
-            const row = new ActionRowBuilder().addComponents(button);
+            const btnHelp = new ButtonBuilder()
+                .setCustomId('ticket_help')
+                .setLabel('🛠️ แจ้งเรื่องช่วยเหลือ')
+                .setStyle(ButtonStyle.Secondary);
 
-            // ส่งข้อมูลลงแชนเนลที่พิมพ์คำสั่ง
+            const row = new ActionRowBuilder().addComponents(btnBuy, btnSell, btnHelp);
+
             await interaction.channel.send({ embeds: [embed], components: [row] });
-            
-            // ตอบกลับแอดมินด้วยข้อความซ่อน
-            await interaction.editReply({ content: "สร้างแผงยืนยันตัวตนแบบพรีเมียมมินิมอลเรียบร้อยแล้ว!" });
+            await interaction.editReply({ content: "สร้างแผงควบคุมตั๋วบริการหลักเรียบร้อยแล้ว!" });
         }
     }
 
-    // 2. ตรวจจับเมื่อผู้ใช้กดยืนยันตัวตน (ปุ่ม Verify)
+    // 2. ตรวจจับการกดปุ่มสร้างตั๋วทั้ง 3 ปุ่ม
     if (interaction.isButton()) {
-        if (interaction.customId === 'premium_verify_btn_final') {
-            
-            // ใช้ Defer สำหรับปุ่ม เพื่อความเสถียรสูงสุด
+        const customId = interaction.customId;
+        const guild = interaction.guild;
+        const user = interaction.user;
+
+        if (['ticket_buy', 'ticket_sell', 'ticket_help'].includes(customId)) {
             await interaction.deferReply({ ephemeral: true });
 
-            const member = interaction.member;
-            const guild = interaction.guild;
+            let channelName = '';
+            let welcomeTitle = '';
+            let welcomeDesc = '';
 
-            // ระบบคำนวณอายุไอดี (Anti-Alt)
-            const createdAt = member.user.createdAt;
-            const now = new Date();
-            const diffTime = Math.abs(now - createdAt);
-            const accountAge = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            // กำหนดข้อมูลแชนเนลตั๋วตามปุ่มที่กดใช้งาน
+            if (customId === 'ticket_buy') {
+                channelName = `🛒-buy-${user.username}`;
+                welcomeTitle = "🛒 แผนกสั่งซื้อและจัดทำบริการ (Buy Service)";
+                welcomeDesc = "ยินดีต้อนรับเข้าสู่ช่องสั่งทำบริการจัดซื้อและทำเว็บไซต์ครับ โปรดพิมพ์ระบุรายละเอียดงานหรือไอดีที่คุณต้องการทิ้งไว้ได้เลยครับ ทีมงานจะรีบเข้ามาตรวจสอบโดยเร็วที่สุด";
+            } else if (customId === 'ticket_sell') {
+                channelName = `💰-sell-${user.username}`;
+                welcomeTitle = "💰 แผนกเสนอขายสินค้ากับแบรนด์ (Sell to Us)";
+                welcomeDesc = "ยินดีต้อนรับเข้าสู่ช่องเสนอขายไอดีและสินค้าครับ โปรดส่งข้อมูลประวัติ รูปภาพราคา และเงื่อนไขต่าง ๆ ทิ้งไว้ในช่องนี้ได้เลยครับ";
+            } else if (customId === 'ticket_help') {
+                channelName = `🛠️-support-${user.username}`;
+                welcomeTitle = "🛠️ แผนกแจ้งปัญหา / คำขอพิเศษ (Help Center)";
+                welcomeDesc = "แผนกรับเรื่องบั๊ก เคลมประกัน และฝ่ายเทคนิคครับ โปรดพิมพ์แจ้งรายละเอียดปัญหาของคุณ หรือคำขอพิเศษที่ต้องการพูดคุยกับทีมงานทิ้งไว้ได้ทันทีครับ";
+            }
 
-            if (accountAge < MIN_ACCOUNT_AGE_DAYS) {
-                await interaction.editReply({
-                    content: `❌ **ขออภัย บัญชีของคุณไม่ผ่านเงื่อนไขความปลอดภัย**\n` +
-                             `เซิร์ฟเวอร์นี้อนุญาตเฉพาะบัญชีที่มีอายุมากกว่า \`${MIN_ACCOUNT_AGE_DAYS}\` วันขึ้นไป เพื่อป้องกันระบบสแปม\n` +
-                             `• บัญชีของคุณมีอายุ: \`${accountAge}\` วัน`
-                });
+            // ตรวจสอบว่ามีช่องตั๋วเปิดซ้ำหรือไม่
+            const existingChannel = guild.channels.cache.find(c => c.name === channelName.toLowerCase());
+            if (existingChannel) {
+                return interaction.editReply({ content: `❌ คุณมีช่องตั๋วเดิมเปิดค้างไว้เรียบร้อยแล้วครับ: ${existingChannel}` });
+            }
 
-                // ส่ง Log บล็อกการเข้าให้แอดมิน
-                const logChannel = guild.channels.cache.get(LOG_CHANNEL_ID);
-                if (logChannel) {
-                    const embedBlock = new EmbedBuilder()
-                        .setTitle("⚠️ ตรวจพบไอดีต้องสงสัย (Anti-Alt Blocked)")
-                        .setDescription("ระบบได้ทำการบล็อกการยืนยันตัวตนเนื่องจากอายุบัญชีน้อยกว่ากำหนด")
-                        .setColor(0xff0000)
-                        .setThumbnail(member.user.displayAvatarURL())
-                        .addFields(
-                            { name: "ผู้ใช้", value: `${member} (${member.user.username})`, inline: true },
-                            { name: "ไอดีผู้ใช้", value: `\`${member.id}\``, inline: true },
-                            { name: "อายุบัญชี", value: `\`${accountAge}\` วัน`, inline: false }
-                        )
-                        .setTimestamp();
-                    await logChannel.send({ embeds: [embedBlock] });
+            // ตั้งค่าสิทธิ์การเข้าถึงช่องตั๋ว (แอดมิน, บอท และผู้กดสร้างเท่านั้นที่เห็น)
+            const permissionOverwrites = [
+                {
+                    id: guild.roles.everyone.id,
+                    deny: [PermissionFlagsBits.ViewChannel]
+                },
+                {
+                    id: user.id,
+                    allow: [
+                        PermissionFlagsBits.ViewChannel,
+                        PermissionFlagsBits.SendMessages,
+                        PermissionFlagsBits.ReadMessageHistory,
+                        PermissionFlagsBits.AttachFiles
+                    ]
+                },
+                {
+                    id: client.user.id,
+                    allow: [
+                        PermissionFlagsBits.ViewChannel,
+                        PermissionFlagsBits.SendMessages,
+                        PermissionFlagsBits.ReadMessageHistory
+                    ]
                 }
-                return;
-            }
+            ];
 
-            const role = guild.roles.cache.get(ROLE_ID);
-            if (!role) {
-                return interaction.editReply({ content: "❌ ไม่พบบทบาทในระบบ กรุณาติดต่อผู้ดูแลเซิร์ฟเวอร์" });
-            }
-
-            if (member.roles.cache.has(ROLE_ID)) {
-                return interaction.editReply({ content: "คุณยืนยันตัวตนเสร็จสิ้นไปแล้วครับ!" });
+            // เพิ่มยศทีมงานแอดมินเข้าไปในสิทธิ์การมองเห็น (ถ้ากรอกค่าไว้)
+            if (STAFF_ROLE_ID && guild.roles.cache.has(STAFF_ROLE_ID)) {
+                permissionOverwrites.push({
+                    id: STAFF_ROLE_ID,
+                    allow: [
+                        PermissionFlagsBits.ViewChannel,
+                        PermissionFlagsBits.SendMessages,
+                        PermissionFlagsBits.ReadMessageHistory
+                    ]
+                });
             }
 
             try {
-                // มอบยศ
-                await member.roles.add(role);
-                await interaction.editReply({
-                    content: `🎉 **ยืนยันตัวตนสมบูรณ์**\n` +
-                             `• คุณได้รับยศ: ${role} แล้วครับ!!`
+                // สร้างช่องแชทตั๋วใหม่แบบ Text Channel
+                const ticketChannel = await guild.channels.create({
+                    name: channelName,
+                    type: ChannelType.GuildText,
+                    parent: guild.channels.cache.has(CATEGORY_ID) ? CATEGORY_ID : null,
+                    permissionOverwrites: permissionOverwrites
                 });
 
-                // ส่ง Log ยืนยันตัวตนสำเร็จให้แอดมิน
-                const logChannel = guild.channels.cache.get(LOG_CHANNEL_ID);
-                if (logChannel) {
-                    const embedSuccess = new EmbedBuilder()
-                        .setTitle("💚 ยืนยันตัวตนสำเร็จ (Verified)")
-                        .setDescription("ผู้ใช้งานกดยืนยันตัวตนเข้าสู่เซิร์ฟเวอร์เรียบร้อยแล้ว")
-                        .setColor(0x00ff00)
-                        .setThumbnail(member.user.displayAvatarURL())
-                        .addFields(
-                            { name: "ผู้ใช้", value: `${member} (${member.user.username})`, inline: true },
-                            { name: "ไอดีผู้ใช้", value: `\`${member.id}\``, inline: true },
-                            { name: "อายุบัญชีขณะเข้า", value: `\`${accountAge}\` วัน`, inline: false }
-                        )
-                        .setTimestamp();
-                    await logChannel.send({ embeds: [embedSuccess] });
-                }
+                // ส่งข้อความแจ้งเตือนต้อนรับและปุ่มกดในช่องตั๋วใหม่
+                const welcomeEmbed = new EmbedBuilder()
+                    .setTitle(welcomeTitle)
+                    .setDescription(
+                        `${welcomeDesc}\n\n` +
+                        `• **ผู้เปิดตั๋ว:** ${user}\n` +
+                        `• **คำแนะนำ:** พิมพ์รายละเอียดทิ้งไว้แล้วรอทีมงานสักครู่ครับ`
+                    )
+                    .setColor(0x2b2d31)
+                    .setFooter({ text: "FLEXDAS TICKET SYSTEM" });
+
+                // ปุ่มกดสำหรับปิดแชทตั๋ว
+                const btnClose = new ButtonBuilder()
+                    .setCustomId('ticket_close_confirm')
+                    .setLabel('🔒 ปิดตั๋วแชท (Close Ticket)')
+                    .setStyle(ButtonStyle.Danger);
+
+                const welcomeRow = new ActionRowBuilder().addComponents(btnClose);
+
+                await ticketChannel.send({ content: `${user} ยินดีต้อนรับครับ`, embeds: [welcomeEmbed], components: [welcomeRow] });
+
+                await interaction.editReply({ content: `✅ สร้างช่องตั๋วของคุณสำเร็จแล้วครับ: ${ticketChannel}` });
+
             } catch (error) {
-                console.error(error);
-                await interaction.editReply({ content: "❌ บอทไม่มีสิทธิ์ให้ยศนี้ กรุณาตรวจสอบว่ายศของบอทอยู่สูงกว่ายศที่กำลังแจกในเซิร์ฟเวอร์" });
+                console.error("เกิดข้อผิดพลาดในการสร้างห้องตั๋ว:", error);
+                await interaction.editReply({ content: "❌ ไม่สามารถสร้างห้องตั๋วได้สำเร็จ โปรดตรวจสอบว่าบอทตั๋วได้รับสิทธิ์ในการจัดการช่องแชท (Manage Channels) แล้วนะครับ" });
             }
+        }
+
+        // 3. ระบบยืนยันการลบตั๋ว (เมื่อแอดมินหรือผู้ใช้กดปุ่ม ปิดตั๋วแชท)
+        if (customId === 'ticket_close_confirm') {
+            await interaction.deferReply();
+
+            await interaction.editReply({ content: "⚠️ **ระบบกำลังดำเนินการลบและปิดตั๋วแชทนี้ถาวรในอีก 5 วินาทีครับ...**" });
+
+            // หน่วงเวลาลบแชนเนล 5 วินาทีเพื่อความปลอดภัย
+            setTimeout(async () => {
+                try {
+                    await interaction.channel.delete();
+                } catch (error) {
+                    console.error("ไม่สามารถลบแชนเนลตั๋วได้:", error);
+                }
+            }, 5000);
         }
     }
 });
 
-// รันบอททำงาน
-client.login(TOKEN);
+// 🔔 สั่งให้ไฟล์ระบบบอทยืนยันตัวตนตัวที่สองทำงานควบคู่กันไป
 require('./verify-bot.js');
+
+// สั่งเข้าสู่ระบบบอทตั๋วตัวแรก
+client.login(TOKEN);
